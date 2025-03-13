@@ -1,14 +1,31 @@
 "use client"
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { 
+  Form, 
+  FormControl, 
+  FormField, 
+  FormItem, 
+  FormLabel, 
+  FormMessage 
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Blog, BlogSchema } from "@/lib/validation";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Textarea } from "@/components/ui/textarea";
+import axios from "axios"
+import { toast } from "sonner";
+import { useState } from "react";
 
 export default function Home() {
+  const [loading, setLoading] = useState<boolean>(false)
   const form = useForm<Blog>({
     resolver: zodResolver(BlogSchema),
     defaultValues: {
@@ -18,8 +35,27 @@ export default function Home() {
     },
   })
 
-  const onSubmit: SubmitHandler<Blog> = (data: Blog) => {
-    console.log(data);    
+  const onSubmit: SubmitHandler<Blog> = async (data: Blog) => {
+    setLoading(true)
+    try {
+      const resp = await axios.post("/api/submission", data);
+      if (!resp.data?.message) {
+        toast.error("Unexpected response from server");
+      } else {
+        toast.success(resp.data.message);
+      }
+    } catch (error: any) {
+      if (error.response?.status === 429) {
+        toast.error("You're posting too quickly. Please slow down.");
+      } else if (error.response?.status === 400) {
+        toast.error(error.response?.data?.message || "Invalid data");
+      } else {
+        toast.error("Unauthorized. Please log in first");
+      }
+    } finally {
+      setLoading(false);
+      form.reset()
+    }
   }
   return (
     <div className="mt-10 flex justify-center items-center max-w-lg mx-auto">
@@ -76,7 +112,13 @@ export default function Home() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full">Submit</Button>
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={loading}
+              >
+                Submit
+              </Button>
             </form>
           </Form>
         </CardContent>
